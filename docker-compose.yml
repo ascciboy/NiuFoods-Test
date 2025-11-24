@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16
+    container_name: niu-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: niu_monitor_development
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: ./niu-monitor
+    container_name: niu-api
+    restart: always
+    environment:
+      DB_HOST: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      RAILS_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    volumes:
+      - ./niu-monitor:/app
+    working_dir: /app
+    command: ["rails", "server", "-b", "0.0.0.0"]
+
+  dashboard:
+    build: ./niufoods-dashboard
+    container_name: niu-dashboard
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    volumes:
+      - ./niufoods-dashboard:/usr/src/app
+      - /usr/src/app/node_modules
+    working_dir: /usr/src/app
+    command: ["npm", "run", "dev", "--", "--host"]
+
+volumes:
+  pgdata:

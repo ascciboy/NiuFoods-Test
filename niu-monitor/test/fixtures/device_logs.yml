@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  device: one
+  previous_status: MyString
+  new_status: MyString
+  details: MyText
+
+two:
+  device: two
+  previous_status: MyString
+  new_status: MyString
+  details: MyText

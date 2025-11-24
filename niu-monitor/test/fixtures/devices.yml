@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  restaurant: one
+  device_type: one
+  name: MyString
+  status: MyString
+  last_connection_at: 2025-11-23 15:55:02
+  critical: false
+
+two:
+  restaurant: two
+  device_type: two
+  name: MyString
+  status: MyString
+  last_connection_at: 2025-11-23 15:55:02
+  critical: false
