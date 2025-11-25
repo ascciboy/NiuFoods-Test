@@ -14,8 +14,14 @@ Rails.application.routes.draw do
         resources :devices, only: [:index]
       end
 
-      patch "/devices/:id/status", to: "devices#update_status"
-      post  "/devices/:id/connection", to: "devices#update_connection"
+      resources :devices, only: [] do
+        post "report", on: :member
+      end
+
+      resources :devices, only: [] do
+        get "logs", to: "device_logs#index"
+      end
+      
     end
   end
 end

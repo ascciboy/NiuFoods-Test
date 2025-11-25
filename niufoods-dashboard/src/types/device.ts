@@ -1,8 +1,8 @@
-export interface Device {
+export type DeviceSummary = {
     id: number;
     name: string;
     status: string;
-    critical: boolean;
-    last_connection_at: string | null;
     location: string | null;
-}
+    offline: boolean;
+    last_connection_at: string;
+};

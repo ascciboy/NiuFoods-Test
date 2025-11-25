@@ -1,8 +1,8 @@
 services:
   db:
     image: postgres:16
-    container_name: niu-db
     restart: always
+    container_name: niu-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -12,27 +12,61 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7
+    container_name: niu-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
   api:
     build: ./niu-monitor
     container_name: niu-api
+    command: bash -c "rm -f tmp/pids/server.pid && rails s -b 0.0.0.0 -p 3000"
     restart: always
     environment:
-      DB_HOST: db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      DATABASE_URL: postgres://postgres:postgres@db:5432/niu_monitor_development
       RAILS_ENV: development
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "3000:3000"
     depends_on:
       - db
+      - redis
     volumes:
       - ./niu-monitor:/app
+      - /app/tmp
     working_dir: /app
-    command: ["rails", "server", "-b", "0.0.0.0"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+
+  worker:
+    build: ./niu-monitor
+    container_name: niu-worker
+    entrypoint: ["entrypoint-worker.sh"]
+    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/niu_monitor_development
+      RAILS_ENV: development
+      REDIS_URL: redis://redis:6379/0
+      REDIS_METRICS_URL: redis://redis:6379/1
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./niu-monitor:/app
+      - /app/tmp
+    working_dir: /app
+
 
   dashboard:
     build: ./niufoods-dashboard
     container_name: niu-dashboard
+    command: ["npm", "run", "dev", "--", "--host"]
     restart: always
     ports:
       - "5173:5173"
@@ -42,7 +76,24 @@ services:
       - ./niufoods-dashboard:/usr/src/app
       - /usr/src/app/node_modules
     working_dir: /usr/src/app
-    command: ["npm", "run", "dev", "--", "--host"]
+
+  simulator:
+    build:
+      context: ./simulator
+    container_name: niu-simulator
+    command: ["ruby", "/sim/load_test.rb"]
+    environment:
+      SIM_API_URL: http://niu-api:3000/api/v1
+      SIM_DEVICES: 30
+      SIM_THREADS: 15
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.30'
 
 volumes:
   pgdata:

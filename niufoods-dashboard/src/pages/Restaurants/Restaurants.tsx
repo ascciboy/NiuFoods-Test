@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/api";
-import type { Restaurant } from "../../types/restaurant";
+import type { RestaurantDetail } from "../../types/restaurant";
 import { colorByStatus } from "../../utils/statusColor";
 import { useNavigate } from "react-router-dom";
 
 const Restaurants = () => {
-    const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+    const [restaurants, setRestaurants] = useState<RestaurantDetail[]>([]);
     const navigate = useNavigate();
 
     useEffect(() => {
-        api.get<Restaurant[]>("/restaurants").then(res => setRestaurants(res.data));
+        api.get<RestaurantDetail[]>("/restaurants").then(res => setRestaurants(res.data));
     }, []);
 
     return (
@@ -31,11 +31,14 @@ const Restaurants = () => {
                                 className="font-bold"
                                 style={{ color: colorByStatus(r.status) }}
                             >
-                                {r.status}
+                                {r.status.toUpperCase()}
                             </span>
-                            <span className="text-sm">
-                                {r.issues_count} problemas · {r.critical_issues_count} críticos
-                            </span>
+
+                            {(r.issues_count > 0 || r.critical_issues_count > 0) && (
+                                <span className="text-sm">
+                                    {r.issues_count} problemas · {r.critical_issues_count} críticos
+                                </span>
+                            )}
                         </div>
                     </div>
                 ))}

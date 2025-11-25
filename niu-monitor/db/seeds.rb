@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require "faker"
 
 puts "Resetting data..." if Rails.env.development?
@@ -7,9 +8,11 @@ Device.delete_all
 DeviceType.delete_all
 Restaurant.delete_all
 
-NUM_RESTAURANTS = 10
-MIN_DEV = 4
-MAX_DEV = 10
+CITIES = [
+  "Santiago", "Valparaiso", "Concepcion", "Osorno",
+  "Temuco", "Rancagua", "Iquique", "Antofagasta", "Talca",
+  "La Serena", "Puerto Montt", "Chillan", "Arica", "Copiapo"
+].freeze
 
 DEVICE_MODELS_CL = {
   "POS Terminal" => [
@@ -37,39 +40,6 @@ DEVICE_MODELS_CL = {
   ]
 }.freeze
 
-puts "Creating device types..."
-
-DEVICE_MODELS_CL.keys.each do |type_name|
-  DeviceType.create!(
-    name: type_name,
-    requires_network: type_name != "Cash Register"
-  )
-end
-
-puts "Creating restaurants..."
-
-CITIES = %w[
-  Santiago Valparaiso Vina Concepcion Osorno Temuco
-  Rancagua Iquique Antofagasta Talca
-].freeze
-
-city_counters = Hash.new(0)
-
-restaurants = NUM_RESTAURANTS.times.map do
-  city = CITIES.sample
-  city_counters[city] += 1
-  idx = city_counters[city]
-
-  Restaurant.create!(
-    name: idx > 1 ? "NiuFoods - #{city} ##{idx}" : "NiuFoods - #{city}",
-    city: city,
-    active: true,
-    last_report_at: Faker::Time.backward(days: 3)
-  )
-end
-
-puts "Assigning devices..."
-
 LOCATIONS_BY_TYPE = {
   "POS Terminal" => ["Caja", "Caja Principal", "Barra", "Mostrador"],
   "Fiscal Printer" => ["Caja", "Área de Pagos", "Impresión Fiscal"],
@@ -80,24 +50,46 @@ LOCATIONS_BY_TYPE = {
   "Cash Register" => ["Caja", "Caja Principal", "Barra"]
 }.freeze
 
-restaurants.each do |restaurant|
-  rand(MIN_DEV..MAX_DEV).times do |index|
-    dtype = DeviceType.all.sample
-    model = DEVICE_MODELS_CL[dtype.name].sample
-    location = LOCATIONS_BY_TYPE[dtype.name].sample
+puts "Creating device types..."
 
-    unique_name = "#{model} - #{format('%02d', index + 1)}"
+device_types = DEVICE_MODELS_CL.keys.map do |type_name|
+  DeviceType.create!(
+    name: type_name,
+    requires_network: type_name != "Cash Register"
+  )
+end
+
+puts "Creating restaurants..."
+
+restaurants = CITIES.map.with_index(1) do |city, index|
+  Restaurant.create!(
+    name: "NiuFoods - #{city}",
+    city: city,
+    active: true,
+    last_report_at: Time.now - index.hours
+  )
+end
+
+puts "Assigning devices..."
+
+restaurants.each_with_index do |restaurant, r_index|
+  selected_types = DEVICE_MODELS_CL.keys.rotate(r_index).first(7)
+
+  selected_types.each_with_index do |type_name, d_index|
+    dtype  = DeviceType.find_by(name: type_name)
+    model  = DEVICE_MODELS_CL[type_name][d_index % DEVICE_MODELS_CL[type_name].size]
+    location = LOCATIONS_BY_TYPE[type_name][d_index % LOCATIONS_BY_TYPE[type_name].size]
 
     restaurant.devices.create!(
       device_type: dtype,
-      name: unique_name,
+      name: "#{model} - #{format('%02d', d_index + 1)}",
       critical: false,
       status: "operative",
       location: location,
-      firmware_version: "v#{rand(1..3)}.#{rand(0..10)}.#{rand(0..99)}",
-      ip_address: dtype.requires_network ? Faker::Internet.ip_v4_address : nil,
+      firmware_version: "v1.0.#{d_index}",
+      ip_address: dtype.requires_network ? "192.168.0.#{10 + d_index}" : nil,
       is_network_reachable: true,
-      last_connection_at: Faker::Time.backward(days: 1)
+      last_connection_at: Time.now - (r_index + d_index).minutes
     )
   end
 

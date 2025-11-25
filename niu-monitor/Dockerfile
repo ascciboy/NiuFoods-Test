@@ -13,7 +13,8 @@ RUN bundle install
 COPY . .
 
 COPY entrypoint.sh /usr/bin/entrypoint.sh
-RUN chmod +x /usr/bin/entrypoint.sh
+COPY entrypoint-worker.sh /usr/bin/entrypoint-worker.sh
+RUN chmod +x /usr/bin/entrypoint.sh /usr/bin/entrypoint-worker.sh
 
 EXPOSE 3000
 
